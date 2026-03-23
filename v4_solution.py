@@ -498,7 +498,7 @@ if HAS_XGB:
             max_depth=8, min_child_weight=5,
             subsample=0.8, colsample_bytree=0.7,
             reg_alpha=0.05, reg_lambda=0.1,
-            tree_method='gpu_hist' if USE_GPU else 'hist',
+            tree_method='hist', device='cuda' if USE_GPU else 'cpu',
             random_state=42, n_jobs=-1, verbosity=0,
             eval_metric='mlogloss',
             early_stopping_rounds=200,
@@ -766,7 +766,7 @@ if HAS_XGB:
         max_depth=8, min_child_weight=5,
         subsample=0.8, colsample_bytree=0.7,
         reg_alpha=0.05, reg_lambda=0.1,
-        tree_method='gpu_hist' if USE_GPU else 'hist',
+        tree_method='hist', device='cuda' if USE_GPU else 'cpu',
         random_state=42, n_jobs=-1, verbosity=0,
     )
     xgb_full.fit(X_full_train, y, sample_weight=sample_weights_train, verbose=200)
