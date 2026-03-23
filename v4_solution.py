@@ -8,6 +8,9 @@
 # 4. Enhanced feature engineering with interaction terms & post-level aggregations
 
 # %% Setup & Data Loading
+# 🔴 Set to True for a quick 30-second run to verify no code/syntax errors exist
+SMOKE_TEST = False
+
 import numpy as np
 import pandas as pd
 import warnings
@@ -66,6 +69,12 @@ except ImportError:
 # %% Load Data
 train  = pd.read_csv('/kaggle/input/comment-category-prediction-challenge/train.csv')
 test   = pd.read_csv('/kaggle/input/comment-category-prediction-challenge/test.csv')
+
+if SMOKE_TEST:
+    print('\n🚨 RUNNING IN SMOKE TEST MODE (Subset Data) 🚨')
+    train = train.sample(500, random_state=42).reset_index(drop=True)
+    test = test.head(100).copy()
+
 sample = pd.read_csv('/kaggle/input/comment-category-prediction-challenge/Sample.csv')
 print(f'Train: {train.shape} | Test: {test.shape}')
 print(train['label'].value_counts(normalize=True).sort_index())
@@ -349,7 +358,7 @@ X_text_test  = hstack([tfidf_word.transform(test_fe['comment']),
 
 print(f'TF-IDF matrix: {X_text_train.shape}')
 
-SVD_N = 300
+SVD_N = 10 if SMOKE_TEST else 300
 svd = TruncatedSVD(n_components=SVD_N, random_state=42, n_iter=7)
 X_svd_train = svd.fit_transform(X_text_train)
 X_svd_test  = svd.transform(X_text_test)
@@ -408,7 +417,7 @@ print(f'  Structured: {len(feature_cols)} | SVD: {SVD_N} | ST: {ST_DIM}')
 # %% LightGBM Training
 y = train['label'].values
 n_classes = 4
-N_FOLDS = 5
+N_FOLDS = 2 if SMOKE_TEST else 5
 skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
 
 # ─── Model 1: LightGBM ───
@@ -419,8 +428,8 @@ print('='*60)
 lgb_params = dict(
     objective='multiclass', num_class=n_classes,
     metric='multi_logloss',
-    n_estimators=4000, learning_rate=0.03,
-    num_leaves=255, max_depth=-1,
+    n_estimators=10 if SMOKE_TEST else 4000, learning_rate=0.03,
+    num_leaves=31 if SMOKE_TEST else 255, max_depth=-1,
     min_child_samples=10,
     feature_fraction=0.7, bagging_fraction=0.8, bagging_freq=5,
     reg_alpha=0.05, reg_lambda=0.1,
@@ -494,8 +503,8 @@ if HAS_XGB:
 
         xgb_model = xgb.XGBClassifier(
             objective='multi:softprob', num_class=n_classes,
-            n_estimators=3000, learning_rate=0.03,
-            max_depth=8, min_child_weight=5,
+            n_estimators=10 if SMOKE_TEST else 3000, learning_rate=0.03,
+            max_depth=4 if SMOKE_TEST else 8, min_child_weight=5,
             subsample=0.8, colsample_bytree=0.7,
             reg_alpha=0.05, reg_lambda=0.1,
             tree_method='hist', device='cuda' if USE_GPU else 'cpu',
@@ -537,8 +546,8 @@ if HAS_CB:
         ytr, yval = y[tr_idx], y[val_idx]
 
         cb_model = CatBoostClassifier(
-            iterations=3000, learning_rate=0.05,
-            depth=8, l2_leaf_reg=3,
+            iterations=10 if SMOKE_TEST else 3000, learning_rate=0.05,
+            depth=4 if SMOKE_TEST else 8, l2_leaf_reg=3,
             auto_class_weights='Balanced',
             random_seed=42, verbose=500,
             task_type='GPU' if USE_GPU else 'CPU',
@@ -583,7 +592,7 @@ lr_fold_scores = []
 
 for fold, (tr_idx, val_idx) in enumerate(skf.split(X_full_train, y)):
     lr = LogisticRegression(
-        C=3.0, max_iter=2000, solver='lbfgs',
+        C=3.0, max_iter=10 if SMOKE_TEST else 2000, solver='lbfgs',
         class_weight='balanced', random_state=42,
         multi_class='multinomial', n_jobs=-1
     )
@@ -748,7 +757,7 @@ print('FULL RETRAIN + SUBMISSION')
 print('='*60)
 
 # Full retrain LightGBM
-best_n_lgb = max(int(np.mean(lgb_best_iters) * 1.05), 100)
+best_n_lgb = min(10, max(int(np.mean(lgb_best_iters) * 1.05), 5)) if SMOKE_TEST else max(int(np.mean(lgb_best_iters) * 1.05), 100)
 print(f'Full retrain LightGBM: n_estimators={best_n_lgb}')
 lgb_full = lgb.LGBMClassifier(**{**lgb_params, 'n_estimators': best_n_lgb})
 lgb_full.fit(X_full_train, y, callbacks=[lgb.log_evaluation(200)])
@@ -762,8 +771,8 @@ if HAS_XGB:
     print('Full retrain XGBoost...')
     xgb_full = xgb.XGBClassifier(
         objective='multi:softprob', num_class=n_classes,
-        n_estimators=2500, learning_rate=0.03,
-        max_depth=8, min_child_weight=5,
+        n_estimators=10 if SMOKE_TEST else 2500, learning_rate=0.03,
+        max_depth=4 if SMOKE_TEST else 8, min_child_weight=5,
         subsample=0.8, colsample_bytree=0.7,
         reg_alpha=0.05, reg_lambda=0.1,
         tree_method='hist', device='cuda' if USE_GPU else 'cpu',
@@ -778,8 +787,8 @@ if HAS_XGB:
 if HAS_CB:
     print('Full retrain CatBoost...')
     cb_full = CatBoostClassifier(
-        iterations=2500, learning_rate=0.05,
-        depth=8, l2_leaf_reg=3,
+        iterations=10 if SMOKE_TEST else 2500, learning_rate=0.05,
+        depth=4 if SMOKE_TEST else 8, l2_leaf_reg=3,
         auto_class_weights='Balanced',
         random_seed=42, verbose=200,
         task_type='GPU' if USE_GPU else 'CPU',
@@ -792,7 +801,7 @@ if HAS_CB:
 # Full retrain LR
 print('Full retrain LR...')
 lr_full = LogisticRegression(
-    C=3.0, max_iter=2000, solver='lbfgs',
+    C=3.0, max_iter=10 if SMOKE_TEST else 2000, solver='lbfgs',
     class_weight='balanced', random_state=42,
     multi_class='multinomial', n_jobs=-1
 )
