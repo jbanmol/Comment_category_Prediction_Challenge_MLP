@@ -819,7 +819,7 @@ unique, counts = np.unique(test_final_preds, return_counts=True)
 for u, c in zip(unique, counts):
     print(f'  Label {u}: {c:,} ({c/len(test_final_preds)*100:.1f}%)')
 
-submission = sample.copy()
+submission = sample.head(len(test_final_preds)).copy() if SMOKE_TEST else sample.copy()
 submission['label'] = test_final_preds
 submission.to_csv('submission.csv', index=False)
 
