@@ -1,5 +1,12 @@
 # Comment Moderation NLP Ensemble
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-NLP-F7931E?logo=scikit-learn&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-Gradient_Boosting-02569B)
+![XGBoost](https://img.shields.io/badge/XGBoost-Ensemble-FF6600)
+![CatBoost](https://img.shields.io/badge/CatBoost-Ensemble-FFCC00)
+![Sentence Transformers](https://img.shields.io/badge/Sentence_Transformers-Embeddings-F59E0B)
+
 NLP classification pipeline for an imbalanced comment-moderation challenge. The solution combines structured feature engineering, TF-IDF/SVD representations, sentence-transformer embeddings, gradient boosting models, and per-class threshold optimization to improve macro F1.
 
 ## What This Demonstrates
